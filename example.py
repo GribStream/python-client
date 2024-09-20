@@ -1,9 +1,9 @@
 from client import GribStreamClient
 
-baseurl = "http://gribstream.com/api/v1"
+baseurl = "http://127.0.0.1:3000/api/v1"
 
 with GribStreamClient(baseurl) as client:
-    
+
     # Non-streaming usage
     df = client.forecasts(
         forecasted_from="2024-09-10T00:00:00Z",

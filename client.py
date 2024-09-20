@@ -4,7 +4,8 @@ import io
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import gzip
-import zlib
+import json
+import brotli
 
 class GribStreamClient:
     def __init__(self, base_url):
@@ -38,7 +39,11 @@ class GribStreamClient:
             return self._get_forecasts_dataframe(url, payload)
 
     def _get_forecasts_dataframe(self, url, payload):
-        resp = self.session.post(url, json=payload, headers={'Accept-Encoding': 'gzip, br'})
+        resp = self.session.post(
+            url, 
+            data=brotli.compress(json.dumps(payload).encode('utf-8')), 
+            headers={'Accept-Encoding': 'gzip, br', 'Content-Encoding': 'br', 'Content-Type': 'application/json'},
+            )
         resp.raise_for_status()
         df = pd.read_csv(io.BytesIO(resp.content), parse_dates=[0, 1])
         return df
