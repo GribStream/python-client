@@ -5,12 +5,12 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import gzip
 import json
-import brotli
 import zlib
 
+baseurl = "http://gribstream.com/api/v1"
+
 class GribStreamClient:
-    def __init__(self, base_url):
-        self.base_url = base_url
+    def __init__(self):
         self.session = requests.Session()
 
         retries = Retry(
@@ -24,7 +24,7 @@ class GribStreamClient:
         self.session.mount("https://", adapter)
 
     def forecasts(self, forecasted_from, forecasted_before, min_horizon, max_horizon, coordinates, variables, stream=False, chunksize=1000):
-        url = f"{self.base_url}/forecasts"
+        url = f"{baseurl}/forecasts"
         payload = {
             "forecastedFrom": forecasted_from,
             "forecastedBefore": forecasted_before,
