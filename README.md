@@ -4,7 +4,7 @@ Python client library to interface with [GribStream](https://www.gribstream.com)
     from client import GribStreamClient
     import datetime
     
-    with GribStreamClient() as client:
+    with GribStreamClient(apikey=None) as client: # DEMO API token
     
     # Non-streaming usage
     start = datetime.datetime.now(datetime.UTC)
