@@ -1,5 +1,5 @@
 # python-client
-Python client library to interface with GribStream
+Python client library to interface with [GribStream](https://www.gribstream.com)
 
     from client import GribStreamClient
     import datetime
