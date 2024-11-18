@@ -6,7 +6,8 @@ from urllib3.util.retry import Retry
 import gzip
 import json
 
-gribstream_base_url = "https://api.gribstream.com"
+gribstream_base_url = "https://gribstream.com"
+# gribstream_base_url = "http://localhost:3000"
 gribstream_api_url = f"{gribstream_base_url}/api/v1"
 
 class GribStreamClient:
@@ -34,11 +35,11 @@ class GribStreamClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def forecasts(self, forecasted_from, forecasted_before, min_horizon, max_horizon, coordinates, variables, stream=False, chunksize=1000):
+    def forecasts(self, forecasted_from, forecasted_until, min_horizon, max_horizon, coordinates, variables, stream=False, chunksize=1000):
         url = f"{gribstream_api_url}/forecasts"
         payload = {
             "forecastedFrom": forecasted_from,
-            "forecastedBefore": forecasted_before,
+            "forecastedUntil": forecasted_until,
             "minHorizon": min_horizon,
             "maxHorizon": max_horizon,
             "coordinates": coordinates,

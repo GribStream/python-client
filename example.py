@@ -7,8 +7,8 @@ with GribStreamClient(apikey=None) as client: # DEMO API token
     start = datetime.datetime.now(datetime.UTC)
 
     df = client.forecasts(
-        forecasted_from="2024-09-10T00:00:00Z",
-        forecasted_before="2024-09-10T00:00:00Z",
+        forecasted_from="2024-08-10T00:00:00Z",
+        forecasted_until="2024-08-10T00:00:00Z",
         min_horizon=1,
         max_horizon=10,
         coordinates=[
