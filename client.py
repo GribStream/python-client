@@ -1,5 +1,6 @@
 import requests
 import pandas as pd
+import datetime
 import io
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -35,11 +36,11 @@ class GribStreamClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def forecasts(self, forecasted_from, forecasted_until, min_horizon, max_horizon, coordinates, variables, stream=False, chunksize=1000):
+    def forecasts(self, forecasted_from, forecasted_until, coordinates, variables, min_horizon=1, max_horizon=1, stream=False, chunksize=1000):
         url = f"{gribstream_api_url}/forecasts"
         payload = {
-            "forecastedFrom": forecasted_from,
-            "forecastedUntil": forecasted_until,
+            "forecastedFrom": forecasted_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "forecastedUntil": forecasted_until.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "minHorizon": min_horizon,
             "maxHorizon": max_horizon,
             "coordinates": coordinates,
@@ -47,11 +48,28 @@ class GribStreamClient:
         }
 
         if stream:
-            return self._get_forecasts_stream(url, payload, chunksize)
+            return self._get_stream(url, payload, chunksize)
         else:
-            return self._get_forecasts_dataframe(url, payload)
+            return self._get_dataframe(url, payload)
 
-    def _get_forecasts_dataframe(self, url, payload):
+    def min_horizon(self, from_time, until_time, coordinates, variables, as_of=datetime.datetime.now(datetime.UTC), min_horizon=1, max_horizon=6, stream=False, chunksize=1000):
+        url = f"{gribstream_api_url}/forecasts/min_horizon"
+        payload = {
+            "fromTime": from_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "untilTime": until_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "asOf": as_of.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "minHorizon": min_horizon,
+            "maxHorizon": max_horizon,
+            "coordinates": coordinates,
+            "variables": variables,
+        }
+
+        if stream:
+            return self._get_stream(url, payload, chunksize)
+        else:
+            return self._get_dataframe(url, payload)
+
+    def _get_dataframe(self, url, payload):
         resp = self.session.post(
             url, 
             data=gzip.compress(json.dumps(payload).encode('utf-8')),
@@ -60,7 +78,7 @@ class GribStreamClient:
         df = pd.read_csv(io.BytesIO(resp.content), parse_dates=[0, 1])
         return df
 
-    def _get_forecasts_stream(self, url, payload, chunksize):
+    def _get_stream(self, url, payload, chunksize):
         resp = self.session.post(
             url, 
             data=gzip.compress(json.dumps(payload).encode('utf-8')), 

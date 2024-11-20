@@ -3,14 +3,11 @@ import datetime
 
 with GribStreamClient(apikey=None) as client: # DEMO API token
     
-    # Non-streaming usage
+    print("Query all weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
     start = datetime.datetime.now(datetime.UTC)
-
     df = client.forecasts(
-        forecasted_from="2024-08-10T00:00:00Z",
-        forecasted_until="2024-08-10T00:00:00Z",
-        min_horizon=1,
-        max_horizon=10,
+        forecasted_from=datetime.datetime(year=2024, month=8, day=10, hour=0),
+        forecasted_until=datetime.datetime(year=2024, month=8, day=10, hour=3),
         coordinates=[
             {"lat": 40.75, "lon": -73.98},
             {"lat": 29.75, "lon": -95.36},
@@ -21,32 +18,35 @@ with GribStreamClient(apikey=None) as client: # DEMO API token
             {"name": "WIND", "level": "10 m above ground", "info": ""},
             {"name": "DPT", "level": "2 m above ground", "info": ""},
         ],
+        min_horizon=1,
+        max_horizon=10,
     )
-    print(df)
-    print('non streaming took', datetime.datetime.now(datetime.UTC) - start)
+    print(df.sort_values(['forecasted_time', 'lat', 'lon']))
+    print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
-    # Streaming usage
+    print()
+
+    print("Query the best historical data for three parameters, for a three day range, for three coordinates, as of the end of the second day")
     start = datetime.datetime.now(datetime.UTC)
-    
-    for chunk_df in client.forecasts(
-        "2024-09-10T00:00:00Z",
-        "2024-09-10T00:00:00Z",
-        1,
-        10,
-        [
+    df = client.min_horizon(
+        from_time=datetime.datetime(year=2024, month=8, day=10, hour=0),
+        until_time=datetime.datetime(year=2024, month=8, day=13, hour=0),
+        coordinates=[
             {"lat": 40.75, "lon": -73.98},
             {"lat": 29.75, "lon": -95.36},
             {"lat": 47.60, "lon": -122.33},
         ],
-        [
+        variables=[
             {"name": "TMP", "level": "2 m above ground", "info": ""},
             {"name": "WIND", "level": "10 m above ground", "info": ""},
             {"name": "DPT", "level": "2 m above ground", "info": ""},
         ],
-        stream=True,
-        chunksize=20,
-    ):
-        print(chunk_df)
-    print('streaming took', datetime.datetime.now(datetime.UTC) - start)
+        # Time travel. Before as_of, forecasted_time is history, after it is the forecast at as_of
+        as_of=datetime.datetime(year=2024, month=8, day=12, hour=0),
+        min_horizon=1,
+        max_horizon=264,
+    )
+    print(df.sort_values(['forecasted_time', 'lat', 'lon']))
+    print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
 print("done")
