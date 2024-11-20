@@ -21,7 +21,7 @@ with GribStreamClient(apikey=None) as client: # DEMO API token
         min_horizon=1,
         max_horizon=10,
     )
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']))
+    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(10).to_string(index=False))
     print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
     print()
@@ -46,7 +46,7 @@ with GribStreamClient(apikey=None) as client: # DEMO API token
         min_horizon=1,
         max_horizon=264,
     )
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']))
+    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(10).to_string(index=False))
     print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
 print("done")
