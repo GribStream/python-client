@@ -10,7 +10,7 @@ import json
 
 gribstream_base_url = "https://gribstream.com"
 # gribstream_base_url = "http://localhost:3000"
-gribstream_api_url = f"{gribstream_base_url}/api/v1"
+gribstream_api_url = f"{gribstream_base_url}/api/v2"
 
 class GribStreamClient:
     """A client to interact with GribStream API for fetching weather forecast data."""
@@ -37,7 +37,7 @@ class GribStreamClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def forecasts(self, forecasted_from: datetime.datetime, forecasted_until: datetime.datetime, coordinates: List[Dict[str, float]], variables: List[Dict[str, str]], min_horizon: int = 1, max_horizon: int = 1, stream: bool = False, chunksize: int = 1000) -> Any:
+    def forecasts(self, dataset: str, forecasted_from: datetime.datetime, forecasted_until: datetime.datetime, coordinates: List[Dict[str, float]], variables: List[Dict[str, str]], min_horizon: int = 1, max_horizon: int = 1, stream: bool = False, chunksize: int = 1000) -> Any:
         """
         Fetches weather forecasts for specified parameters and time range.
 
@@ -54,7 +54,7 @@ class GribStreamClient:
         Returns:
         pandas.DataFrame or Generator[pandas.DataFrame, None, None]: DataFrame or stream of DataFrames containing the forecast data.
         """
-        url = f"{gribstream_api_url}/forecasts"
+        url = f"{gribstream_api_url}/{dataset}/forecasts"
         payload = {
             "forecastedFrom": forecasted_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "forecastedUntil": forecasted_until.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -69,7 +69,7 @@ class GribStreamClient:
         else:
             return self._get_dataframe(url, payload)
 
-    def min_horizon(self, from_time: datetime.datetime, until_time: datetime.datetime, coordinates: List[Dict[str, float]], variables: List[Dict[str, str]], as_of: datetime.datetime = datetime.datetime.now(datetime.timezone.utc), min_horizon: int = 1, max_horizon: int = 6, stream: bool = False, chunksize: int = 1000) -> Any:
+    def min_horizon(self, dataset: str, from_time: datetime.datetime, until_time: datetime.datetime, coordinates: List[Dict[str, float]], variables: List[Dict[str, str]], as_of: datetime.datetime = datetime.datetime.now(datetime.timezone.utc), min_horizon: int = 1, max_horizon: int = 6, stream: bool = False, chunksize: int = 1000) -> Any:
         """
         Fetches historical forecast data for specified parameters and time range.
 
@@ -87,7 +87,7 @@ class GribStreamClient:
         Returns:
         pandas.DataFrame or Generator[pandas.DataFrame, None, None]: DataFrame or stream of DataFrames containing the historical forecast data.
         """
-        url = f"{gribstream_api_url}/forecasts/min_horizon"
+        url = f"{gribstream_api_url}/{dataset}/forecasts/min_horizon"
         payload = {
             "fromTime": from_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "untilTime": until_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
