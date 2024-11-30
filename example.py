@@ -3,7 +3,7 @@ import datetime
 
 with GribStreamClient(apikey=None) as client: # DEMO API token
     
-    print("Query all weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
+    print("Query all NBM weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
     start = datetime.datetime.now(datetime.UTC)
     df = client.forecasts(
         dataset='nbm',
@@ -27,7 +27,7 @@ with GribStreamClient(apikey=None) as client: # DEMO API token
 
     print()
 
-    print("Query the best historical data for three parameters, for a three day range, for three coordinates, as of the end of the second day")
+    print("Query the best GFS historical data for two parameters, for a three day range, for three coordinates, as of the end of the second day")
     start = datetime.datetime.now(datetime.UTC)
     df = client.min_horizon(
         dataset='gfs',
