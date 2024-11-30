@@ -1,10 +1,10 @@
 # python-client
-Python client library to interface with [GribStream](https://www.gribstream.com)
-
-from client import GribStreamClient
-import datetime
-
-with GribStreamClient(apikey=None) as client: # DEMO API token
+    Python client library to interface with [GribStream](https://www.gribstream.com)
+    
+    from client import GribStreamClient
+    import datetime
+    
+    with GribStreamClient(apikey=None) as client: # DEMO API token
     
     print("Query all NBM weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
     start = datetime.datetime.now(datetime.UTC)
