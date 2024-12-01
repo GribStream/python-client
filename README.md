@@ -34,7 +34,7 @@ print()
 
 print("Query the best GFS historical data for two parameters, for a three day range, for three coordinates, as of the end of the second day")
 start = datetime.datetime.now(datetime.UTC)
-df = client.min_horizon(
+df = client.history(
     dataset='gfs',
     from_time=datetime.datetime(year=2022, month=8, day=10, hour=0),
     until_time=datetime.datetime(year=2022, month=8, day=13, hour=0),
