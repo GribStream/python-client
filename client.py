@@ -42,6 +42,7 @@ class GribStreamClient:
         Fetches weather forecasts for specified parameters and time range.
 
         Args:
+        dataset (str): Dataset to query. nbm/gfs
         forecasted_from (datetime.datetime): Start time for the forecast range.
         forecasted_until (datetime.datetime): End time for the forecast range.
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
@@ -74,6 +75,7 @@ class GribStreamClient:
         Fetches historical data for specified parameters and time range.
 
         Args:
+        dataset (str): Dataset to query. nbm/gfs
         from_time (datetime.datetime): Start time for fetching historical data.
         until_time (datetime.datetime): End time for fetching historical data.
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
