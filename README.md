@@ -111,4 +111,4 @@ response in: 0:00:00.659955
 done
 ```
 
-If you liked GribStream please consider upvoting in ProductHunt [here]([https://www.gribstream.com](https://www.producthunt.com/posts/gribstream))🙏.
+If you liked GribStream please consider upvoting in ProductHunt [here](https://www.producthunt.com/posts/gribstream)
