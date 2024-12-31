@@ -7,6 +7,10 @@ Leverage:
     - [The Global Forecast System (GFS)](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast)
     - [The Rapid Refresh (RAP)](https://www.nco.ncep.noaa.gov/pmb/products/rap/)
 
+GFS and RAP are suitable for SkewT LogP charts. Check the example.
+
+![image](https://github.com/user-attachments/assets/86446dda-61e1-420b-ba4b-e781db06ca4f)
+
 ```python
 from client import GribStreamClient
 import datetime
@@ -115,9 +119,5 @@ Query the best GFS historical data for two parameters, for a three day range, fo
 response in: 0:00:00.659955
 done
 ```
-
-GFS and RAP are suitable for SkewT LogP charts. Check the example.
-
-![image](https://github.com/user-attachments/assets/c5473ecc-d18f-47b4-95c9-d516002cf246)
 
 If you liked GribStream please consider upvoting on ProductHunt [here](https://www.producthunt.com/posts/gribstream)
