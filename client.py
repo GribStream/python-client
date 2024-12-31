@@ -9,7 +9,6 @@ import gzip
 import json
 
 gribstream_base_url = "https://gribstream.com"
-# gribstream_base_url = "http://localhost:3000"
 gribstream_api_url = f"{gribstream_base_url}/api/v2"
 
 class GribStreamClient:
@@ -116,7 +115,9 @@ class GribStreamClient:
         Returns:
         pd.DataFrame: DataFrame containing the fetched data.
         """
+        start = datetime.datetime.now(datetime.UTC)
         resp = self.session.post(url, data=gzip.compress(json.dumps(payload).encode('utf-8')))
+        print('http request took', datetime.datetime.now(datetime.UTC) - start)
         resp.raise_for_status()
         return pd.read_csv(io.BytesIO(resp.content), parse_dates=[0, 1])
 
