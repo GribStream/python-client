@@ -19,16 +19,18 @@ for name in names:
     for p in pressure_levels:
         variables.append({'name': name, 'level': f'{p} mb', 'info': ''})
 
+dt = datetime.datetime(year=2025, month=1, day=1, hour=0)
+coords = {"lat": 29.749907, "lon": -95.358421}
+city = 'Houston, TX'
+
 with GribStreamClient() as client:
     df = client.history(
         dataset='rap',
-        from_time=datetime.datetime(year=2021, month=3, day=9, hour=20),
-        until_time=datetime.datetime(year=2021, month=3, day=9, hour=21),
-        min_horizon=5,
+        from_time=dt,
+        until_time=dt+datetime.timedelta(hours=1),
+        min_horizon=0,
         max_horizon=55,
-        coordinates=[{
-            "lat": 29.533693, "lon": -98.469780,
-        }],
+        coordinates=[coords],
         variables=variables,
     )
 
@@ -68,6 +70,6 @@ skew.plot_mixing_lines()
 
 # Add legend and labels
 plt.legend()
-plt.title("Skew-T Log-P Chart")
+plt.title(f"Skew-T Log-P Chart. {city} - {coords} \n\tForecasted at: {row['forecasted_at']} Forecasted time: {row['forecasted_time']}")
 
 plt.show()
