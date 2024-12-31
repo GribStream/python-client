@@ -2,6 +2,11 @@
 
 Python client library to interface with [GribStream](https://www.gribstream.com)
 
+Leverage:
+    - [The National Blend of Models (NBM)](https://vlab.noaa.gov/web/mdl/nbm)
+    - [The Global Forecast System (GFS)](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast)
+    - [The Rapid Refresh (RAP)](https://www.nco.ncep.noaa.gov/pmb/products/rap/)
+
 ```python
 from client import GribStreamClient
 import datetime
@@ -111,4 +116,7 @@ response in: 0:00:00.659955
 done
 ```
 
-If you liked GribStream please consider upvoting in ProductHunt [here](https://www.producthunt.com/posts/gribstream)
+GFS and RAP are suitable for SkewT LogP charts. Check the example.
+
+
+If you liked GribStream please consider upvoting on ProductHunt [here](https://www.producthunt.com/posts/gribstream)
