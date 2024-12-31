@@ -118,5 +118,6 @@ done
 
 GFS and RAP are suitable for SkewT LogP charts. Check the example.
 
+![image](https://github.com/user-attachments/assets/c5473ecc-d18f-47b4-95c9-d516002cf246)
 
 If you liked GribStream please consider upvoting on ProductHunt [here](https://www.producthunt.com/posts/gribstream)
