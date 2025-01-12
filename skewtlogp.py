@@ -12,20 +12,21 @@ pressure_levels = [
     750, 775, 800, 825, 850, 875, 900, 925, 950, 975, 1000
 ]
 
-names = ['TMP', 'RH', 'UGRD', 'VGRD', 'HGT']
+names = ['TMP', 'RH', 'UGRD', 'VGRD']
 
 variables = []
 for name in names:
     for p in pressure_levels:
         variables.append({'name': name, 'level': f'{p} mb', 'info': ''})
 
-dt = datetime.datetime(year=2025, month=1, day=1, hour=0)
+dt = datetime.datetime(year=2025, month=1, day=10, hour=0)
 coords = {"lat": 29.749907, "lon": -95.358421}
+model = 'rap'
 city = 'Houston, TX'
 
 with GribStreamClient() as client:
     df = client.history(
-        dataset='rap',
+        dataset=model,
         from_time=dt,
         until_time=dt+datetime.timedelta(hours=1),
         min_horizon=0,
@@ -34,14 +35,13 @@ with GribStreamClient() as client:
         variables=variables,
     )
 
-# Example row to plot (replace with desired row selection)
+print(df)
 row = df.iloc[0]
 
 # Extract temperature, dewpoint, and pressure
 temperature = np.array([row[f'TMP|{p} mb|'] for p in pressure_levels]) * units.kelvin
 relative_humidity = np.array([row[f'RH|{p} mb|'] for p in pressure_levels]) * units.percent
 pressure = np.array(pressure_levels) * units.hPa
-geopotential_height = np.array([row[f'HGT|{p} mb|'] for p in pressure_levels]) * units.meter
 
 # Calculate dewpoint temperature from relative humidity and temperature
 from metpy.calc import dewpoint_from_relative_humidity
@@ -52,13 +52,15 @@ fig = plt.figure(figsize=(9, 9))
 skew = SkewT(fig, rotation=45)
 
 # Plot temperature and dewpoint
-skew.plot(pressure, temperature.to('degC'), 'r', label='Temperature')
-skew.plot(pressure, dewpoint.to('degC'), 'g', label='Dewpoint')
+skew.plot(pressure, temperature, 'r', label='Temperature')
+skew.plot(pressure, dewpoint, 'g', label='Dewpoint')
 
 # Add wind barbs if U and V wind components are available
 try:
     u_wind = np.array([row[f'UGRD|{p} mb|'] for p in pressure_levels]) * units('m/s')
     v_wind = np.array([row[f'VGRD|{p} mb|'] for p in pressure_levels]) * units('m/s')
+    u_wind = u_wind.to('knots')
+    v_wind = v_wind.to('knots')
     skew.plot_barbs(pressure, u_wind, v_wind)
 except KeyError:
     print("U and V wind components not available; skipping wind barbs.")
