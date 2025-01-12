@@ -9,7 +9,7 @@ Leverage:
 
 GFS and RAP are suitable for SkewT LogP charts. Check the example.
 
-![image](https://github.com/user-attachments/assets/86446dda-61e1-420b-ba4b-e781db06ca4f)
+![houston2025](https://github.com/user-attachments/assets/31cb05c0-b05e-4835-b70d-e10c94835235)
 
 ```python
 from client import GribStreamClient
