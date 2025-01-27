@@ -8,8 +8,15 @@ from urllib3.util.retry import Retry
 import gzip
 import json
 
+# gribstream_base_url = "http://localhost:3000"
+# gribstream_api_url = f"{gribstream_base_url}/api/v2"
+
 gribstream_base_url = "https://gribstream.com"
 gribstream_api_url = f"{gribstream_base_url}/api/v2"
+
+# gribstream_api_url = f"{gribstream_base_url}/dev"
+
+time_format = "%Y-%m-%dT%H:%M:%SZ"
 
 class GribStreamClient:
     """A client to interact with GribStream API for fetching weather forecast data."""
@@ -36,12 +43,12 @@ class GribStreamClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def forecasts(self, dataset: str, forecasted_from: datetime.datetime, forecasted_until: datetime.datetime, coordinates: List[Dict[str, float]], variables: List[Dict[str, str]], min_horizon: int = 1, max_horizon: int = 1, stream: bool = False, chunksize: int = 1000) -> Any:
+    def forecasts(self, dataset: str, forecasted_from: datetime.datetime = None, forecasted_until: datetime.datetime = None, times_list: List[datetime.datetime] = None, coordinates: List[Dict[str, float]] = None, variables: List[Dict[str, str]] = None, min_horizon: int = 0, max_horizon: int = 1, stream: bool = False, chunksize: int = 1000) -> Any:
         """
         Fetches weather forecasts for specified parameters and time range.
 
         Args:
-        dataset (str): Dataset to query. nbm/gfs
+        dataset (str): Dataset to query. nbm/gfs/rap/hrrr
         forecasted_from (datetime.datetime): Start time for the forecast range.
         forecasted_until (datetime.datetime): End time for the forecast range.
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
@@ -56,30 +63,40 @@ class GribStreamClient:
         """
         url = f"{gribstream_api_url}/{dataset}/forecasts"
         payload = {
-            "forecastedFrom": forecasted_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "forecastedUntil": forecasted_until.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "minHorizon": min_horizon,
             "maxHorizon": max_horizon,
             "coordinates": coordinates,
             "variables": variables,
         }
 
+        if times_list is None and (forecasted_from is None or forecasted_until is None):
+            raise Exception('Must either choose a (forecasted_from, forecasted_until) range or a times_list')
+
+        if times_list is not None:
+            payload["timesList"] = [t.strftime(time_format) for t in times_list]
+
+
+        if forecasted_from is not None:
+            payload["forecastedFrom"] = forecasted_from.strftime(time_format)
+        if forecasted_until is not None:
+            payload["forecastedUntil"] = forecasted_until.strftime(time_format)
+
         if stream:
             return self._get_stream(url, payload, chunksize)
         else:
             return self._get_dataframe(url, payload)
 
-    def history(self, dataset: str, from_time: datetime.datetime, until_time: datetime.datetime, coordinates: List[Dict[str, float]], variables: List[Dict[str, str]], as_of: datetime.datetime = datetime.datetime.now(datetime.timezone.utc), min_horizon: int = 1, max_horizon: int = 6, stream: bool = False, chunksize: int = 1000) -> Any:
+    def history(self, dataset: str, from_time: datetime.datetime = None, until_time: datetime.datetime = None, times_list: List[datetime.datetime] = None, coordinates: List[Dict[str, float]] = None, variables: List[Dict[str, str]] = None, as_of: datetime.datetime = datetime.datetime.now(datetime.timezone.utc), min_horizon: int = 0, max_horizon: int = 6, stream: bool = False, chunksize: int = 1000) -> Any:
         """
         Fetches historical data for specified parameters and time range.
 
         Args:
-        dataset (str): Dataset to query. nbm/gfs
+        dataset (str): Dataset to query. nbm/gfs/rap/hrrr
         from_time (datetime.datetime): Start time for fetching historical data.
         until_time (datetime.datetime): End time for fetching historical data.
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
         variables (List[Dict[str, str]]): List of dictionaries specifying the variables to fetch.
-        as_of (datetime.datetime): Reference time for which the historical data is considered.
+        as_of (datetime.datetime): Reference time for which the historical data is considered. Enables "time-travel".
         min_horizon (int): Minimum forecast horizon in hours.
         max_horizon (int): Maximum forecast horizon in hours.
         stream (bool): If True, returns a generator yielding chunks of data.
@@ -90,14 +107,24 @@ class GribStreamClient:
         """
         url = f"{gribstream_api_url}/{dataset}/history"
         payload = {
-            "fromTime": from_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "untilTime": until_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "asOf": as_of.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "asOf": as_of.strftime(time_format),
             "minHorizon": min_horizon,
             "maxHorizon": max_horizon,
             "coordinates": coordinates,
             "variables": variables,
         }
+
+        if times_list is None and (from_time is None or until_time is None):
+            raise Exception('Must either choose a (from_time, until_time) range or a times_list')
+
+        if times_list is not None:
+            payload["timesList"] = [t.strftime(time_format) for t in times_list]
+
+
+        if from_time is not None:
+            payload["fromTime"] = from_time.strftime(time_format)
+        if until_time is not None:
+            payload["untilTime"] = until_time.strftime(time_format)
 
         if stream:
             return self._get_stream(url, payload, chunksize)
