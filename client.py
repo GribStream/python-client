@@ -8,11 +8,11 @@ from urllib3.util.retry import Retry
 import gzip
 import json
 
-# gribstream_base_url = "http://localhost:3000"
-# gribstream_api_url = f"{gribstream_base_url}/api/v2"
-
-gribstream_base_url = "https://gribstream.com"
+gribstream_base_url = "http://localhost:3000"
 gribstream_api_url = f"{gribstream_base_url}/api/v2"
+
+# gribstream_base_url = "https://gribstream.com"
+# gribstream_api_url = f"{gribstream_base_url}/api/v2"
 
 # gribstream_api_url = f"{gribstream_base_url}/dev"
 
@@ -48,7 +48,7 @@ class GribStreamClient:
         Fetches weather forecasts for specified parameters and time range.
 
         Args:
-        dataset (str): Dataset to query. nbm/gfs/rap/hrrr
+        dataset (str): Dataset to query. nbm/gfs/rap/hrrr/graphcast/gefschem/gefsatmosmean
         forecasted_from (datetime.datetime): Start time for the forecast range.
         forecasted_until (datetime.datetime): End time for the forecast range.
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
@@ -91,7 +91,7 @@ class GribStreamClient:
         Fetches historical data for specified parameters and time range.
 
         Args:
-        dataset (str): Dataset to query. nbm/gfs/rap/hrrr
+        dataset (str): Dataset to query. nbm/gfs/rap/hrrr/graphcast/gefschem/gefsatmosmean
         from_time (datetime.datetime): Start time for fetching historical data.
         until_time (datetime.datetime): End time for fetching historical data.
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
@@ -145,6 +145,8 @@ class GribStreamClient:
         start = datetime.datetime.now(datetime.UTC)
         resp = self.session.post(url, data=gzip.compress(json.dumps(payload).encode('utf-8')))
         print('http request took', datetime.datetime.now(datetime.UTC) - start)
+        if resp.status_code == 429:
+            raise Exception(resp.text)
         resp.raise_for_status()
         return pd.read_csv(io.BytesIO(resp.content), parse_dates=[0, 1])
 
@@ -161,6 +163,8 @@ class GribStreamClient:
         Generator[pd.DataFrame, None, None]: Generator yielding DataFrames containing chunks of data.
         """
         resp = self.session.post(url, data=gzip.compress(json.dumps(payload).encode('utf-8')), stream=True)
+        if resp.status_code == 429:
+            raise Exception(resp.text)
         resp.raise_for_status()
         decompressed = gzip.GzipFile(fileobj=resp.raw) if resp.headers.get('Content-Encoding') == 'gzip' else resp.raw
         for chunk in pd.read_csv(decompressed, parse_dates=[0, 1], chunksize=chunksize):
