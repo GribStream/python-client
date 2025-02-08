@@ -8,11 +8,11 @@ from urllib3.util.retry import Retry
 import gzip
 import json
 
-gribstream_base_url = "http://localhost:3000"
-gribstream_api_url = f"{gribstream_base_url}/api/v2"
-
-# gribstream_base_url = "https://gribstream.com"
+# gribstream_base_url = "http://localhost:3000"
 # gribstream_api_url = f"{gribstream_base_url}/api/v2"
+
+gribstream_base_url = "https://gribstream.com"
+gribstream_api_url = f"{gribstream_base_url}/api/v2"
 
 # gribstream_api_url = f"{gribstream_base_url}/dev"
 
@@ -28,7 +28,7 @@ class GribStreamClient:
         apikey (Optional[str]): The API key for accessing GribStream API. If None, fetches a demo token.
         """
         if apikey is None:
-            print('Warning, missing API token. Running in limited DEMO mode.')
+            print('Warning, missing API token. Running in limited DEMO mode. Please create your own token: https://gribstream.com/app/dashboard')
             keyreq = requests.get(f'{gribstream_base_url}/auth/demo')
             keyreq.raise_for_status()
             apikey = keyreq.content.decode()
