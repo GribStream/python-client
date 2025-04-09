@@ -6,6 +6,33 @@ with GribStreamClient(apikey=None) as client: # DEMO API token
     print("Query all NBM weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
     start = datetime.datetime.now(datetime.UTC)
     df = client.forecasts(
+        dataset='hrrr',
+        forecasted_from=datetime.datetime(year=2024, month=8, day=10, hour=0),
+        forecasted_until=datetime.datetime(year=2024, month=8, day=10, hour=3),
+        coordinates=[
+            {"lat": 40.75, "lon": -73.98},
+            {"lat": 29.75, "lon": -95.36},
+            {"lat": 47.60, "lon": -122.33},
+        ],
+        variables=[
+            { "name": "UGRD", "level": "10 m above ground", "info": "", "alias": "uwind" },
+            { "name": "VGRD", "level": "10 m above ground", "info": "", "alias": "vwind" },
+        ],
+        expressions=[
+            { "expression": "func.Hypot(uwind, vwind)", "alias": "wind_magnitude" },
+            { "expression": "int(270.0 - func.Atan2(vwind, uwind) * 180.0 / 3.141592) % 360", "alias": "wind_angle" },
+        ],
+        min_horizon=1,
+        max_horizon=10,
+    )
+    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(20).to_string(index=False))
+    print('response in:', datetime.datetime.now(datetime.UTC) - start)
+
+    print()
+
+    print("Query all NBM weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
+    start = datetime.datetime.now(datetime.UTC)
+    df = client.forecasts(
         dataset='nbm',
         forecasted_from=datetime.datetime(year=2024, month=8, day=10, hour=0),
         forecasted_until=datetime.datetime(year=2024, month=8, day=10, hour=3),
@@ -97,5 +124,31 @@ with GribStreamClient(apikey=None) as client: # DEMO API token
     print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(20).to_string(index=False))
     print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
+    print()
+
+    print("Example using names for coordinates so the response is easier to parse, use aliases to name"
+        "columns and expressions to calculate wind magnitude and direction based on wind vectors")
+    start = datetime.datetime.now(datetime.UTC)
+    df = client.history(
+        dataset='hrrr',
+        from_time=datetime.datetime(year=2022, month=8, day=10, hour=0),
+        until_time=datetime.datetime(year=2022, month=8, day=13, hour=0),
+        coordinates=[
+            {"lat": 29.7604, "lon": -95.3698, "name": "HOUSTON"},
+        ],
+        variables=[
+            { "name": "UGRD", "level": "10 m above ground", "info": "", "alias": "uwind" },
+            { "name": "VGRD", "level": "10 m above ground", "info": "", "alias": "vwind" },
+        ],
+        expressions=[
+            { "expression": "func.Hypot(uwind, vwind)", "alias": "wind_magnitude" },
+            { "expression": "int(270.0 - func.Atan2(vwind, uwind) * 180.0 / 3.141592) % 360", "alias": "wind_angle" },
+        ],
+        min_horizon=0,
+        max_horizon=48,
+    )
+
+    print(df.sort_values(['forecasted_time', 'lat', 'lon']))
+    print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
 print("done")

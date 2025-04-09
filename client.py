@@ -43,16 +43,32 @@ class GribStreamClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def forecasts(self, dataset: str, forecasted_from: datetime.datetime = None, forecasted_until: datetime.datetime = None, times_list: List[datetime.datetime] = None, coordinates: List[Dict[str, float]] = None, variables: List[Dict[str, str]] = None, min_horizon: int = 0, max_horizon: int = 1, stream: bool = False, chunksize: int = 1000) -> Any:
+    def forecasts(self, 
+                  dataset: str, 
+                  forecasted_from: datetime.datetime = None, 
+                  forecasted_until: datetime.datetime = None, 
+                  times_list: List[datetime.datetime] = None, 
+                  coordinates: List[Dict[str, float]] = None, 
+                  variables: List[Dict[str, str]] = None, 
+                  expressions: List[Dict[str, float]] = None, 
+                  min_horizon: int = 0,
+                  max_horizon: int = 1,
+                  stream: bool = False, 
+                  chunksize: int = 1000) -> Any:
         """
         Fetches weather forecasts for specified parameters and time range.
 
         Args:
         dataset (str): Dataset to query. nbm/gfs/rap/hrrr/graphcast/gefschem/gefsatmosmean/cfsipvf/cfsocnf/cfsflxf/cfspgbf
-        forecasted_from (datetime.datetime): Start time for the forecast range.
-        forecasted_until (datetime.datetime): End time for the forecast range.
+
+        # Opt selecting time by range [from_time, until_time) or a list of times.
+        forecasted_from (datetime.datetime): Start time for the model run time range.
+        forecasted_until (datetime.datetime): End time for the model run time range.
+        times_list (List[datetime.datetime]): List of model run times for fetching historical data.
+
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
         variables (List[Dict[str, str]]): List of dictionaries specifying the variables to fetch.
+        expressions (List[Dict[str, str]]): List expressions to return calculated expressions based on selected variables.
         min_horizon (int): Minimum horizon for the forecasts.
         max_horizon (int): Maximum horizon for the forecasts.
         stream (bool): If True, returns a generator yielding chunks of data.
@@ -67,6 +83,7 @@ class GribStreamClient:
             "maxHorizon": max_horizon,
             "coordinates": coordinates,
             "variables": variables,
+            "expressions": expressions,
         }
 
         if times_list is None and (forecasted_from is None or forecasted_until is None):
@@ -86,16 +103,33 @@ class GribStreamClient:
         else:
             return self._get_dataframe(url, payload)
 
-    def history(self, dataset: str, from_time: datetime.datetime = None, until_time: datetime.datetime = None, times_list: List[datetime.datetime] = None, coordinates: List[Dict[str, float]] = None, variables: List[Dict[str, str]] = None, as_of: datetime.datetime = datetime.datetime.now(datetime.timezone.utc), min_horizon: int = 0, max_horizon: int = 6, stream: bool = False, chunksize: int = 1000) -> Any:
+    def history(self, 
+                dataset: str, 
+                from_time: datetime.datetime = None, 
+                until_time: datetime.datetime = None, 
+                times_list: List[datetime.datetime] = None, 
+                coordinates: List[Dict[str, float]] = None, 
+                variables: List[Dict[str, str]] = None, 
+                expressions: List[Dict[str, float]] = None, 
+                as_of: datetime.datetime = datetime.datetime.now(datetime.timezone.utc), 
+                min_horizon: int = 0, 
+                max_horizon: int = 6, 
+                stream: bool = False, 
+                chunksize: int = 1000) -> Any:
         """
         Fetches historical data for specified parameters and time range.
 
         Args:
         dataset (str): Dataset to query. nbm/gfs/rap/hrrr/graphcast/gefschem/gefsatmosmean/cfsipvf/cfsocnf/cfsflxf/cfspgbf
+
+        # Opt selecting time by range [from_time, until_time) or a list of times.
         from_time (datetime.datetime): Start time for fetching historical data.
         until_time (datetime.datetime): End time for fetching historical data.
+        times_list (List[datetime.datetime]): List of times for fetching historical data.
+
         coordinates (List[Dict[str, float]]): List of dictionaries specifying latitude and longitude.
         variables (List[Dict[str, str]]): List of dictionaries specifying the variables to fetch.
+        expressions (List[Dict[str, str]]): List expressions to return calculated expressions based on selected variables.
         as_of (datetime.datetime): Reference time for which the historical data is considered. Enables "time-travel".
         min_horizon (int): Minimum forecast horizon in hours.
         max_horizon (int): Maximum forecast horizon in hours.
@@ -112,6 +146,7 @@ class GribStreamClient:
             "maxHorizon": max_horizon,
             "coordinates": coordinates,
             "variables": variables,
+            "expressions": expressions,
         }
 
         if times_list is None and (from_time is None or until_time is None):
