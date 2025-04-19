@@ -51,6 +51,7 @@ class GribStreamClient:
                   coordinates: List[Dict[str, float]] = None, 
                   variables: List[Dict[str, str]] = None, 
                   expressions: List[Dict[str, float]] = None, 
+                  filter: Dict[str, float] = None, 
                   min_horizon: int = 0,
                   max_horizon: int = 1,
                   stream: bool = False, 
@@ -84,6 +85,7 @@ class GribStreamClient:
             "coordinates": coordinates,
             "variables": variables,
             "expressions": expressions,
+            "filter": filter,
         }
 
         if times_list is None and (forecasted_from is None or forecasted_until is None):
@@ -111,6 +113,7 @@ class GribStreamClient:
                 coordinates: List[Dict[str, float]] = None, 
                 variables: List[Dict[str, str]] = None, 
                 expressions: List[Dict[str, float]] = None, 
+                filter: Dict[str, float] = None, 
                 as_of: datetime.datetime = datetime.datetime.now(datetime.timezone.utc), 
                 min_horizon: int = 0, 
                 max_horizon: int = 6, 
@@ -147,6 +150,7 @@ class GribStreamClient:
             "coordinates": coordinates,
             "variables": variables,
             "expressions": expressions,
+            "filter": filter,
         }
 
         if times_list is None and (from_time is None or until_time is None):
