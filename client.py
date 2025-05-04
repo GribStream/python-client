@@ -111,6 +111,7 @@ class GribStreamClient:
                 until_time: datetime.datetime = None, 
                 times_list: List[datetime.datetime] = None, 
                 coordinates: List[Dict[str, float]] = None, 
+                grid: List[Dict[str, float]] = None, 
                 variables: List[Dict[str, str]] = None, 
                 expressions: List[Dict[str, float]] = None, 
                 filter: Dict[str, float] = None, 
@@ -151,6 +152,7 @@ class GribStreamClient:
             "variables": variables,
             "expressions": expressions,
             "filter": filter,
+            "grid": grid,
         }
 
         if times_list is None and (from_time is None or until_time is None):
