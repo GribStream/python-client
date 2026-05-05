@@ -1,0 +1,4 @@
+-r requirements.txt
+matplotlib>=3.8
+metpy>=1.6
+numpy>=1.26

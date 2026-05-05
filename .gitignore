@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Local ad-hoc scripts, scratch data, and repo cleanup backups
+.adhoc/
+.vscode/launch.json
+
 # C extensions
 *.so
 

@@ -1,154 +1,40 @@
+"""Minimal GribStream client example.
+
+Run from the repository root after setting GRIBSTREAM_API_KEY.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import os
+
 from client import GribStreamClient
-import datetime
 
-with GribStreamClient(apikey=None) as client: # DEMO API token
-    
-    print("Query all NBM weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
-    start = datetime.datetime.now(datetime.UTC)
-    df = client.forecasts(
-        dataset='hrrr',
-        forecasted_from=datetime.datetime(year=2024, month=8, day=10, hour=0),
-        forecasted_until=datetime.datetime(year=2024, month=8, day=10, hour=3),
-        coordinates=[
-            {"lat": 40.75, "lon": -73.98},
-            {"lat": 29.75, "lon": -95.36},
-            {"lat": 47.60, "lon": -122.33},
-        ],
-        variables=[
-            { "name": "UGRD", "level": "10 m above ground", "info": "", "alias": "uwind" },
-            { "name": "VGRD", "level": "10 m above ground", "info": "", "alias": "vwind" },
-        ],
-        expressions=[
-            { "expression": "func.Hypot(uwind, vwind)", "alias": "wind_magnitude" },
-            { "expression": "int(270.0 - func.Atan2(vwind, uwind) * 180.0 / 3.141592) % 360", "alias": "wind_angle" },
-        ],
-        min_horizon=1,
-        max_horizon=10,
-    )
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(20).to_string(index=False))
-    print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
-    print()
+def require_api_key() -> None:
+    if not os.getenv("GRIBSTREAM_API_KEY"):
+        raise SystemExit("Set GRIBSTREAM_API_KEY before running this example.")
 
-    print("Query all NBM weather forecasts for three parameters, over a three hour range, ten hours out, for three coordinates")
-    start = datetime.datetime.now(datetime.UTC)
-    df = client.forecasts(
-        dataset='nbm',
-        forecasted_from=datetime.datetime(year=2024, month=8, day=10, hour=0),
-        forecasted_until=datetime.datetime(year=2024, month=8, day=10, hour=3),
-        coordinates=[
-            {"lat": 40.75, "lon": -73.98},
-            {"lat": 29.75, "lon": -95.36},
-            {"lat": 47.60, "lon": -122.33},
-        ],
-        variables=[
-            {"name": "TMP", "level": "2 m above ground", "info": ""},
-            {"name": "WIND", "level": "10 m above ground", "info": ""},
-            {"name": "DPT", "level": "2 m above ground", "info": ""},
-        ],
-        min_horizon=1,
-        max_horizon=10,
-    )
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(20).to_string(index=False))
-    print('response in:', datetime.datetime.now(datetime.UTC) - start)
 
-    print()
+def main() -> None:
+    require_api_key()
 
-    print("Same as above, but query a couple specific runtimes instead")
-    start = datetime.datetime.now(datetime.UTC)
-    df = client.forecasts(
-        dataset='nbm',
-        times_list=[datetime.datetime(year=2024, month=8, day=10, hour=2), datetime.datetime(year=2024, month=8, day=10, hour=1)],
-        coordinates=[
-            {"lat": 40.75, "lon": -73.98},
-            {"lat": 29.75, "lon": -95.36},
-            {"lat": 47.60, "lon": -122.33},
-        ],
-        variables=[
-            {"name": "TMP", "level": "2 m above ground", "info": ""},
-            {"name": "WIND", "level": "10 m above ground", "info": ""},
-            {"name": "DPT", "level": "2 m above ground", "info": ""},
-        ],
-        min_horizon=1,
-        max_horizon=10,
-    )
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(20).to_string(index=False))
-    print('response in:', datetime.datetime.now(datetime.UTC) - start)
+    start = dt.datetime(2026, 4, 4, 0, tzinfo=dt.timezone.utc)
+    end = dt.datetime(2026, 4, 4, 6, tzinfo=dt.timezone.utc)
 
-    print()
+    with GribStreamClient() as client:
+        df = client.timeseries(
+            dataset="gfs",
+            from_time=start,
+            until_time=end,
+            coordinates=[client.coordinate(29.7604, -95.3698, "Houston")],
+            variables=[client.variable("TMP", "2 m above ground", alias="temp_k")],
+            min_lead_time="0h",
+            max_lead_time="24h",
+        )
 
-    print("Query the best GFS historical data for two parameters, for a three day range, for three coordinates, as of the end of the second day")
-    start = datetime.datetime.now(datetime.UTC)
-    df = client.history(
-        dataset='gfs',
-        from_time=datetime.datetime(year=2022, month=8, day=10, hour=0),
-        until_time=datetime.datetime(year=2022, month=8, day=13, hour=0),
-        coordinates=[
-            {"lat": 40.75, "lon": -73.98},
-            {"lat": 29.75, "lon": -95.36},
-            {"lat": 47.60, "lon": -122.33},
-        ],
-        variables=[
-            {"name": "TMP", "level": "2 m above ground", "info": ""},
-            {"name": "TMP", "level": "surface", "info": ""},
-        ],
-        # Time travel. Before as_of, forecasted_time is history, after it is the forecast at as_of
-        as_of=datetime.datetime(year=2024, month=8, day=12, hour=0),
-        min_horizon=0,
-        max_horizon=264,
-    )
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(20).to_string(index=False))
-    print('response in:', datetime.datetime.now(datetime.UTC) - start)
+    print(df.sort_values(["forecasted_time", "name"]).head().to_string(index=False))
 
-    print()
 
-    print("Same as above, but query a couple specific times instead.")
-    start = datetime.datetime.now(datetime.UTC)
-    df = client.history(
-        dataset='gfs',
-        times_list=[datetime.datetime(year=2022, month=8, day=10, hour=2), datetime.datetime(year=2022, month=8, day=10, hour=5)],
-        coordinates=[
-            {"lat": 40.75, "lon": -73.98},
-            {"lat": 29.75, "lon": -95.36},
-            {"lat": 47.60, "lon": -122.33},
-        ],
-        variables=[
-            {"name": "TMP", "level": "2 m above ground", "info": ""},
-            {"name": "TMP", "level": "surface", "info": ""},
-        ],
-        # Time travel. Before as_of, forecasted_time is history, after it is the forecast at as_of
-        as_of=datetime.datetime(year=2024, month=8, day=12, hour=0),
-        min_horizon=0,
-        max_horizon=264,
-    )
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']).head(20).to_string(index=False))
-    print('response in:', datetime.datetime.now(datetime.UTC) - start)
-
-    print()
-
-    print("Example using names for coordinates so the response is easier to parse, use aliases to name"
-        "columns and expressions to calculate wind magnitude and direction based on wind vectors")
-    start = datetime.datetime.now(datetime.UTC)
-    df = client.history(
-        dataset='hrrr',
-        from_time=datetime.datetime(year=2022, month=8, day=10, hour=0),
-        until_time=datetime.datetime(year=2022, month=8, day=13, hour=0),
-        coordinates=[
-            {"lat": 29.7604, "lon": -95.3698, "name": "HOUSTON"},
-        ],
-        variables=[
-            { "name": "UGRD", "level": "10 m above ground", "info": "", "alias": "uwind" },
-            { "name": "VGRD", "level": "10 m above ground", "info": "", "alias": "vwind" },
-        ],
-        expressions=[
-            { "expression": "func.Hypot(uwind, vwind)", "alias": "wind_magnitude" },
-            { "expression": "int(270.0 - func.Atan2(vwind, uwind) * 180.0 / 3.141592) % 360", "alias": "wind_angle" },
-        ],
-        min_horizon=0,
-        max_horizon=48,
-    )
-
-    print(df.sort_values(['forecasted_time', 'lat', 'lon']))
-    print('response in:', datetime.datetime.now(datetime.UTC) - start)
-
-print("done")
+if __name__ == "__main__":
+    main()
