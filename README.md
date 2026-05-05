@@ -125,26 +125,51 @@ Example coverage:
 
 ## Shared Parameters
 
-Use shared parameters when you want one logical signal mapped across datasets without hardcoding dataset-specific selectors.
+Most queries can use exact selectors directly:
+
+```python
+rows = client.timeseries(
+    dataset="gfs",
+    from_time="2026-04-04T00:00:00Z",
+    until_time="2026-04-04T12:00:00Z",
+    coordinates=[client.coordinate(29.7604, -95.3698, "Houston")],
+    variables=[client.variable("TMP", "2 m above ground", alias="temp_k")],
+)
+```
+
+Shared parameters are for multi-model code. They let you ask for a logical signal such as
+`wind_speed_10m` and let GribStream resolve the exact dataset-specific request fragment.
+For some datasets this is a direct selector; for others it may be hidden U/V wind fields plus
+an expression.
 
 ```python
 from gribstream import GribStreamClient
 
 with GribStreamClient() as client:
-    wind = client.resolve_shared_parameter(
+    wind_request = client.resolve_shared_parameter(
         "wind_speed_10m",
         dataset="ifsoper",
         alias="wind_mps",
     )
+
+    # wind_request looks like:
+    # {
+    #   "variables": [... exact selectors for ifsoper ...],
+    #   "expressions": [... optional derived wind speed expression ...],
+    # }
+
     rows = client.timeseries(
         dataset="ifsoper",
         from_time="2026-04-04T00:00:00Z",
         until_time="2026-04-04T12:00:00Z",
         coordinates=[client.coordinate(51.5072, -0.1276, "London")],
-        variables=wind["variables"],
-        expressions=wind.get("expressions"),
+        variables=wind_request["variables"],
+        expressions=wind_request.get("expressions"),
     )
 ```
+
+If you are only targeting one known dataset and already know its selector, prefer the direct
+selector form.
 
 ## Publishing To PyPI
 
