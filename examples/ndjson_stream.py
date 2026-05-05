@@ -1,21 +1,17 @@
-"""Stream newline-delimited JSON rows instead of loading a DataFrame."""
+"""Stream newline-delimited JSON rows."""
 
 from __future__ import annotations
 
 import datetime as dt
 import itertools
-import os
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from gribstream import NDJSON, GribStreamClient
 
-from client import GribStreamClient, NDJSON
+from _utils import require_api_key
 
 
 def main() -> None:
-    if not os.getenv("GRIBSTREAM_API_KEY"):
-        raise SystemExit("Set GRIBSTREAM_API_KEY before running this example.")
+    require_api_key()
 
     with GribStreamClient() as client:
         rows = client.timeseries(

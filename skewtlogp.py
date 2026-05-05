@@ -14,7 +14,7 @@ import datetime as dt
 import os
 from pathlib import Path
 
-from client import GribStreamClient
+from gribstream import GribStreamClient
 
 PRESSURE_LEVELS = [
     100,
@@ -119,7 +119,10 @@ def build_variables() -> list[dict[str, object]]:
 def complete_levels(row, np) -> list[int]:
     levels: list[int] = []
     for level in PRESSURE_LEVELS:
-        values = [row[f"tmp_{level}"], row[f"dpt_{level}"], row[f"u_{level}"], row[f"v_{level}"]]
+        try:
+            values = [float(row[f"tmp_{level}"]), float(row[f"dpt_{level}"]), float(row[f"u_{level}"]), float(row[f"v_{level}"])]
+        except (KeyError, TypeError, ValueError):
+            continue
         if all(np.isfinite(value) for value in values):
             levels.append(level)
     return levels
@@ -134,7 +137,7 @@ def main() -> None:
     coordinate = GribStreamClient.coordinate(args.lat, args.lon, args.name)
 
     with GribStreamClient() as client:
-        df = client.timeseries(
+        rows = client.timeseries(
             dataset=args.dataset,
             times_list=[valid_time],
             min_lead_time=args.min_lead_time,
@@ -143,19 +146,19 @@ def main() -> None:
             variables=build_variables(),
         )
 
-    if df.empty:
+    if not rows:
         raise RuntimeError("GribStream returned no rows for the selected sounding.")
 
-    row = df.iloc[0]
+    row = rows[0]
     levels = complete_levels(row, np)
     if len(levels) < 3:
         raise RuntimeError("Fewer than three complete pressure levels were returned; cannot draw a useful Skew-T.")
 
     pressure = np.array(levels) * units.hPa
-    temperature = (np.array([row[f"tmp_{level}"] for level in levels]) * units.kelvin).to("degC")
-    dewpoint = (np.array([row[f"dpt_{level}"] for level in levels]) * units.kelvin).to("degC")
-    u_wind = (np.array([row[f"u_{level}"] for level in levels]) * units("m/s")).to("knots")
-    v_wind = (np.array([row[f"v_{level}"] for level in levels]) * units("m/s")).to("knots")
+    temperature = (np.array([float(row[f"tmp_{level}"]) for level in levels]) * units.kelvin).to("degC")
+    dewpoint = (np.array([float(row[f"dpt_{level}"]) for level in levels]) * units.kelvin).to("degC")
+    u_wind = (np.array([float(row[f"u_{level}"]) for level in levels]) * units("m/s")).to("knots")
+    v_wind = (np.array([float(row[f"v_{level}"]) for level in levels]) * units("m/s")).to("knots")
 
     fig = plt.figure(figsize=(9, 9))
     skew = SkewT(fig, rotation=45)

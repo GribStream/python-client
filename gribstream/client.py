@@ -8,13 +8,13 @@ selection, and small helpers for constructing request payloads.
 from __future__ import annotations
 
 import datetime as dt
+import csv
 import io
 import json
 import os
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from typing import Any, Optional
 
-import pandas as pd
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -65,8 +65,6 @@ class GribStreamClient:
         Retry count for transient HTTP errors.
     session:
         Optional ``requests.Session`` for callers that need custom transport.
-    apikey:
-        Deprecated spelling kept for compatibility with older examples.
     """
 
     def __init__(
@@ -77,12 +75,7 @@ class GribStreamClient:
         timeout: float = 120,
         retries: int = 5,
         session: Optional[requests.Session] = None,
-        apikey: Optional[str] = None,
     ) -> None:
-        if api_key is not None and apikey is not None:
-            raise ValueError("Pass either api_key or deprecated apikey, not both.")
-        if api_key is None:
-            api_key = apikey
         if api_key is None:
             api_key = os.getenv(API_KEY_ENV)
 
@@ -129,9 +122,7 @@ class GribStreamClient:
         members: Optional[Sequence[int]] = None,
         accept: str = CSV,
         stream: bool = False,
-        chunksize: int = 10_000,
         raw: bool = False,
-        **extra_body: Any,
     ) -> Any:
         """Query best-available values by valid time.
 
@@ -153,9 +144,8 @@ class GribStreamClient:
             min_horizon=min_horizon,
             max_horizon=max_horizon,
             members=members,
-            **extra_body,
         )
-        return self.query(dataset, "timeseries", payload, accept=accept, stream=stream, chunksize=chunksize, raw=raw)
+        return self.query(dataset, "timeseries", payload, accept=accept, stream=stream, raw=raw)
 
     def runs(
         self,
@@ -176,9 +166,7 @@ class GribStreamClient:
         members: Optional[Sequence[int]] = None,
         accept: str = CSV,
         stream: bool = False,
-        chunksize: int = 10_000,
         raw: bool = False,
-        **extra_body: Any,
     ) -> Any:
         """Query every matching forecast run.
 
@@ -199,17 +187,8 @@ class GribStreamClient:
             min_horizon=min_horizon,
             max_horizon=max_horizon,
             members=members,
-            **extra_body,
         )
-        return self.query(dataset, "runs", payload, accept=accept, stream=stream, chunksize=chunksize, raw=raw)
-
-    def history(self, dataset: str, **kwargs: Any) -> Any:
-        """Deprecated alias for :meth:`timeseries`."""
-        return self.timeseries(dataset, **kwargs)
-
-    def forecasts(self, dataset: str, **kwargs: Any) -> Any:
-        """Deprecated alias for :meth:`runs`."""
-        return self.runs(dataset, **kwargs)
+        return self.query(dataset, "runs", payload, accept=accept, stream=stream, raw=raw)
 
     def query(
         self,
@@ -219,16 +198,14 @@ class GribStreamClient:
         *,
         accept: str = CSV,
         stream: bool = False,
-        chunksize: int = 10_000,
         raw: bool = False,
     ) -> Any:
         """POST a fully formed payload to a forecast query endpoint.
 
-        ``endpoint`` is usually ``"timeseries"`` or ``"runs"``. Legacy aliases
-        ``"history"`` and ``"forecasts"`` are also accepted by the API.
+        ``endpoint`` must be ``"timeseries"`` or ``"runs"``.
         """
-        if endpoint not in {"timeseries", "runs", "history", "forecasts"}:
-            raise ValueError("endpoint must be one of: timeseries, runs, history, forecasts")
+        if endpoint not in {"timeseries", "runs"}:
+            raise ValueError("endpoint must be one of: timeseries, runs")
         response = self._request(
             "POST",
             f"/api/v2/{dataset}/{endpoint}",
@@ -239,7 +216,7 @@ class GribStreamClient:
         )
         if raw:
             return response
-        return self._parse_query_response(response, accept=accept, stream=stream, chunksize=chunksize)
+        return self._parse_query_response(response, accept=accept, stream=stream)
 
     def build_timeseries_payload(
         self,
@@ -258,7 +235,6 @@ class GribStreamClient:
         min_horizon: Optional[int] = None,
         max_horizon: Optional[int] = None,
         members: Optional[Sequence[int]] = None,
-        **extra_body: Any,
     ) -> JsonObject:
         payload: JsonObject = {}
         self._add_time_selection(payload, "fromTime", from_time, "untilTime", until_time, times_list)
@@ -276,7 +252,6 @@ class GribStreamClient:
             min_horizon=min_horizon,
             max_horizon=max_horizon,
             members=members,
-            extra_body=extra_body,
         )
         return payload
 
@@ -296,7 +271,6 @@ class GribStreamClient:
         min_horizon: Optional[int] = None,
         max_horizon: Optional[int] = None,
         members: Optional[Sequence[int]] = None,
-        **extra_body: Any,
     ) -> JsonObject:
         payload: JsonObject = {}
         self._add_time_selection(
@@ -319,7 +293,6 @@ class GribStreamClient:
             min_horizon=min_horizon,
             max_horizon=max_horizon,
             members=members,
-            extra_body=extra_body,
         )
         return payload
 
@@ -501,7 +474,6 @@ class GribStreamClient:
         *,
         accept: str,
         stream: bool,
-        chunksize: int,
     ) -> Any:
         accept = (accept or CSV).lower()
         if accept in {NDJSON, X_NDJSON}:
@@ -519,21 +491,20 @@ class GribStreamClient:
                 response.close()
 
         if stream:
-            return self._iter_csv_chunks(response, chunksize)
+            return self._iter_csv_rows(response)
         try:
             return self._read_csv_response(response)
         finally:
             response.close()
 
-    def _read_csv_response(self, response: requests.Response) -> pd.DataFrame:
-        frame = pd.read_csv(io.BytesIO(response.content))
-        return self._parse_time_columns(frame)
+    def _read_csv_response(self, response: requests.Response) -> list[JsonObject]:
+        return list(csv.DictReader(io.StringIO(response.text)))
 
-    def _iter_csv_chunks(self, response: requests.Response, chunksize: int) -> Iterator[pd.DataFrame]:
+    def _iter_csv_rows(self, response: requests.Response) -> Iterator[JsonObject]:
         response.raw.decode_content = True
+        text_stream = io.TextIOWrapper(response.raw, encoding=response.encoding or "utf-8", newline="")
         try:
-            for chunk in pd.read_csv(response.raw, chunksize=chunksize):
-                yield self._parse_time_columns(chunk)
+            yield from csv.DictReader(text_stream)
         finally:
             response.close()
 
@@ -544,13 +515,6 @@ class GribStreamClient:
                     yield json.loads(line)
         finally:
             response.close()
-
-    @staticmethod
-    def _parse_time_columns(frame: pd.DataFrame) -> pd.DataFrame:
-        for column in ("forecasted_at", "forecasted_time"):
-            if column in frame.columns:
-                frame[column] = pd.to_datetime(frame[column], utc=True)
-        return frame
 
     @staticmethod
     def _add_time_selection(
@@ -590,7 +554,6 @@ class GribStreamClient:
         min_horizon: Optional[int],
         max_horizon: Optional[int],
         members: Optional[Sequence[int]],
-        extra_body: Mapping[str, Any],
     ) -> None:
         if not variables:
             raise ValueError("At least one variable is required.")
@@ -616,9 +579,6 @@ class GribStreamClient:
             payload["maxHorizon"] = max_horizon
         if members is not None:
             payload["members"] = list(members)
-        for key, value in extra_body.items():
-            if value is not None:
-                payload[key] = value
 
     @staticmethod
     def _format_time(value: TimeLike) -> str:

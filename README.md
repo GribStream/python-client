@@ -1,20 +1,28 @@
 # GribStream Python Client
 
+<p align="center">
+  <img src="https://gribstream.com/home-hero-videoframe-166.webp" alt="GribStream weather forecast visualization" width="760">
+</p>
+
 Small Python client and examples for the [GribStream API](https://gribstream.com/docs). The client targets the current v2 API contract: forecast queries, public catalog discovery, shared cross-dataset parameters, expressions, filters, grids, ensemble members, and CSV/JSON/NDJSON response formats.
 
 ## Install
 
+From this checkout:
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
 For the Skew-T plotting example:
 
 ```bash
-pip install -r requirements-examples.txt
+pip install -e '.[examples]'
 ```
+
+After this, use `from gribstream import GribStreamClient`.
 
 ## Authentication
 
@@ -30,10 +38,10 @@ Optional: set `GRIBSTREAM_BASE_URL` if you are targeting a non-default deploymen
 
 ```python
 import datetime as dt
-from client import GribStreamClient
+from gribstream import GribStreamClient
 
 with GribStreamClient() as client:
-    df = client.timeseries(
+    rows = client.timeseries(
         dataset="gfs",
         from_time=dt.datetime(2026, 4, 4, 0, tzinfo=dt.timezone.utc),
         until_time=dt.datetime(2026, 4, 4, 6, tzinfo=dt.timezone.utc),
@@ -43,7 +51,7 @@ with GribStreamClient() as client:
         max_lead_time="24h",
     )
 
-print(df.head())
+print(rows[:3])
 ```
 
 Run the root example:
@@ -64,8 +72,7 @@ python skewtlogp.py --help
 
 - `client.timeseries(...)`: calls `POST /api/v2/{dataset}/timeseries` for the best available value per valid time. Use this for dashboards, feature generation, and leakage-safe backtests.
 - `client.runs(...)`: calls `POST /api/v2/{dataset}/runs` for every matching model run. Use this for forecast aging, run-to-run drift, and cycle comparisons.
-- `client.history(...)` and `client.forecasts(...)`: compatibility aliases for `timeseries` and `runs`.
-- `client.query(dataset, endpoint, payload, ...)`: sends a fully formed payload to `timeseries`, `runs`, or a legacy alias.
+- `client.query(dataset, endpoint, payload, ...)`: sends a fully formed payload to `timeseries` or `runs`.
 - Catalog helpers: `list_datasets`, `get_dataset`, `list_dataset_parameters`, `get_dataset_parameter`, `list_shared_parameters`, `get_shared_parameter`, and `resolve_shared_parameter`.
 
 ## Request Features
@@ -77,14 +84,14 @@ Forecast query helpers support the current v2 request fields:
 - Lead-time filters: `min_lead_time`/`max_lead_time` are preferred; deprecated `min_horizon`/`max_horizon` remain available.
 - Spatial selection: point `coordinates`, rectangular `grid`, or both.
 - Data fields: exact selector `variables`, server-side `expressions`, boolean `filter`, and ensemble `members`.
-- Response formats: CSV as a pandas DataFrame by default, `application/json` as Python objects, and `application/ndjson` as rows or a streaming iterator.
+- Response formats: CSV rows as `list[dict[str, str]]` by default, `application/json` as Python objects, and `application/ndjson` as rows or a streaming iterator.
 
 ## Examples
 
-All data-query examples read the token from `GRIBSTREAM_API_KEY`.
+After `pip install -e .`, examples can be run directly as scripts. All data-query examples read the token from `GRIBSTREAM_API_KEY`.
 
 ```bash
-python examples/timeseries_dataframe.py
+python examples/timeseries_rows.py
 python examples/runs_forecast_aging.py
 python examples/as_of_backtest.py
 python examples/json_response.py
@@ -103,10 +110,10 @@ python skewtlogp.py
 
 Example coverage:
 
-- `timeseries_dataframe.py`: best-available valid-time query into pandas.
+- `timeseries_rows.py`: best-available valid-time query into CSV row dictionaries.
 - `runs_forecast_aging.py`: every matching model run for forecast-aging analysis.
 - `as_of_backtest.py`: leakage-safe historical query with an `as_of` cutoff.
-- `json_response.py`: `application/json` instead of CSV/DataFrame.
+- `json_response.py`: `application/json` instead of CSV rows.
 - `ndjson_stream.py`: streaming newline-delimited JSON rows.
 - `ensemble_members.py`: explicit member selection for ensemble datasets.
 - `shared_parameter_timeseries.py`: resolve a normalized signal for one dataset.
@@ -121,7 +128,7 @@ Example coverage:
 Use shared parameters when you want one logical signal mapped across datasets without hardcoding dataset-specific selectors.
 
 ```python
-from client import GribStreamClient
+from gribstream import GribStreamClient
 
 with GribStreamClient() as client:
     wind = client.resolve_shared_parameter(
@@ -129,7 +136,7 @@ with GribStreamClient() as client:
         dataset="ifsoper",
         alias="wind_mps",
     )
-    df = client.timeseries(
+    rows = client.timeseries(
         dataset="ifsoper",
         from_time="2026-04-04T00:00:00Z",
         until_time="2026-04-04T12:00:00Z",
@@ -138,6 +145,27 @@ with GribStreamClient() as client:
         expressions=wind.get("expressions"),
     )
 ```
+
+## Publishing To PyPI
+
+The repo is now package-shaped via `pyproject.toml`. Recommended release flow:
+
+```bash
+python -m pip install -e '.[build]'
+python -m build
+python -m twine check dist/*
+python -m twine upload --repository testpypi dist/*
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple gribstream
+python -m twine upload dist/*
+```
+
+Operational notes:
+
+- The package distribution name and import name are both `gribstream`.
+- Use a PyPI API token, not your password. Store it in `~/.pypirc` or `TWINE_USERNAME=__token__` plus `TWINE_PASSWORD`.
+- Bump `version` in `pyproject.toml` for every upload. PyPI does not allow replacing an existing file for the same version.
+- TestPyPI is a rehearsal only; dependencies may still resolve from real PyPI via `--extra-index-url`.
+- Before the first real upload, confirm the `gribstream` project name is available on PyPI.
 
 ## Sources
 

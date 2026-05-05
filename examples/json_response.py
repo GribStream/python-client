@@ -1,21 +1,17 @@
-"""Request application/json instead of the default CSV DataFrame."""
+"""Request application/json instead of default CSV rows."""
 
 from __future__ import annotations
 
 import datetime as dt
 import json
-import os
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from gribstream import JSON, GribStreamClient
 
-from client import GribStreamClient, JSON
+from _utils import require_api_key
 
 
 def main() -> None:
-    if not os.getenv("GRIBSTREAM_API_KEY"):
-        raise SystemExit("Set GRIBSTREAM_API_KEY before running this example.")
+    require_api_key()
 
     with GribStreamClient() as client:
         rows = client.timeseries(

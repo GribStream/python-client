@@ -6,14 +6,10 @@ Run from the repository root after setting GRIBSTREAM_API_KEY.
 from __future__ import annotations
 
 import datetime as dt
-import os
 
-from client import GribStreamClient
+from gribstream import GribStreamClient
 
-
-def require_api_key() -> None:
-    if not os.getenv("GRIBSTREAM_API_KEY"):
-        raise SystemExit("Set GRIBSTREAM_API_KEY before running this example.")
+from examples._utils import print_rows, require_api_key, sorted_rows
 
 
 def main() -> None:
@@ -23,7 +19,7 @@ def main() -> None:
     end = dt.datetime(2026, 4, 4, 6, tzinfo=dt.timezone.utc)
 
     with GribStreamClient() as client:
-        df = client.timeseries(
+        rows = client.timeseries(
             dataset="gfs",
             from_time=start,
             until_time=end,
@@ -33,7 +29,7 @@ def main() -> None:
             max_lead_time="24h",
         )
 
-    print(df.sort_values(["forecasted_time", "name"]).head().to_string(index=False))
+    print_rows(sorted_rows(rows, ["forecasted_time", "name"]), limit=5)
 
 
 if __name__ == "__main__":

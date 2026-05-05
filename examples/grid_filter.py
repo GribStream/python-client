@@ -3,21 +3,17 @@
 from __future__ import annotations
 
 import datetime as dt
-import os
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from gribstream import GribStreamClient
 
-from client import GribStreamClient
+from _utils import print_rows, require_api_key
 
 
 def main() -> None:
-    if not os.getenv("GRIBSTREAM_API_KEY"):
-        raise SystemExit("Set GRIBSTREAM_API_KEY before running this example.")
+    require_api_key()
 
     with GribStreamClient() as client:
-        df = client.timeseries(
+        rows = client.timeseries(
             dataset="gfs",
             from_time=dt.datetime(2026, 4, 4, 0, tzinfo=dt.timezone.utc),
             until_time=dt.datetime(2026, 4, 4, 6, tzinfo=dt.timezone.utc),
@@ -32,7 +28,8 @@ def main() -> None:
             max_lead_time="24h",
         )
 
-    print(df.sort_values("storm_severity", ascending=False).head(20).to_string(index=False))
+    rows = sorted(rows, key=lambda row: float(row.get("storm_severity") or 0), reverse=True)
+    print_rows(rows, limit=20)
 
 
 if __name__ == "__main__":

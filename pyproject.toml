@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gribstream"
+version = "0.1.0"
+description = "Minimal Python client and examples for the GribStream API v2"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+]
+authors = [
+    { name = "GribStream" },
+]
+keywords = ["weather", "forecast", "grib", "gribstream", "meteorology"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+
+[project.optional-dependencies]
+examples = [
+    "matplotlib>=3.8",
+    "metpy>=1.6",
+    "numpy>=1.26",
+]
+build = [
+    "build>=1.2",
+    "twine>=5.0",
+]
+
+[project.urls]
+Homepage = "https://gribstream.com"
+Documentation = "https://gribstream.com/docs"
+Source = "https://github.com/GribStream/python-client"
+
+[tool.setuptools.packages.find]
+include = ["gribstream*"]
