@@ -4,11 +4,29 @@
   <img src="https://gribstream.com/home-hero-videoframe-166.webp" alt="GribStream weather forecast visualization" width="760">
 </p>
 
-Small Python client and examples for the [GribStream API](https://gribstream.com/docs). The client targets the current v2 API contract: forecast queries, public catalog discovery, shared cross-dataset parameters, expressions, filters, grids, ensemble members, and CSV/JSON/NDJSON response formats.
+A lightweight Python client for the [GribStream API](https://gribstream.com/docs). Use it to pull forecast data from models like GFS, HRRR, IFS, GEFS, NBM, and other datasets exposed by GribStream.
+
+The client is intentionally small: core install depends only on `requests` and returns plain Python objects.
+
+## What You Can Do
+
+- Query best-available forecast values by valid time with `timeseries`.
+- Query every matching model run with `runs` for forecast-aging or run-to-run analysis.
+- Discover datasets and exact parameter selectors from the public catalog.
+- Query points or grids.
+- Use server-side expressions and filters.
+- Request CSV rows, JSON, or streaming NDJSON.
+- Select ensemble members on ensemble datasets.
 
 ## Install
 
-From this checkout:
+When published to PyPI:
+
+```bash
+pip install gribstream
+```
+
+From a source checkout:
 
 ```bash
 python -m venv .venv
@@ -16,79 +34,154 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-For the Skew-T plotting example:
+Optional plotting dependencies for the Skew-T example:
 
 ```bash
 pip install -e '.[examples]'
 ```
 
-After this, use `from gribstream import GribStreamClient`.
-
 ## Authentication
 
-Create an API token in the GribStream dashboard, then export it as `GRIBSTREAM_API_KEY`:
+Create an API token in the GribStream dashboard, then export it:
 
 ```bash
 export GRIBSTREAM_API_KEY='YOUR_TOKEN_HERE'
 ```
 
-Optional: set `GRIBSTREAM_BASE_URL` if you are targeting a non-default deployment. The client sends `Authorization: Bearer $GRIBSTREAM_API_KEY` for forecast query endpoints. Catalog endpoints are public, but using the same client initialization keeps examples consistent.
+The client sends that token as `Authorization: Bearer $GRIBSTREAM_API_KEY`. Public catalog endpoints do not require a token, but forecast query endpoints do.
+
+Optional: set `GRIBSTREAM_BASE_URL` to target a non-default deployment.
 
 ## Quickstart
 
 ```python
-import datetime as dt
 from gribstream import GribStreamClient
 
 with GribStreamClient() as client:
     rows = client.timeseries(
         dataset="gfs",
-        from_time=dt.datetime(2026, 4, 4, 0, tzinfo=dt.timezone.utc),
-        until_time=dt.datetime(2026, 4, 4, 6, tzinfo=dt.timezone.utc),
+        from_time="2026-04-04T00:00:00Z",
+        until_time="2026-04-04T06:00:00Z",
         coordinates=[client.coordinate(29.7604, -95.3698, "Houston")],
         variables=[client.variable("TMP", "2 m above ground", alias="temp_k")],
         min_lead_time="0h",
         max_lead_time="24h",
     )
 
-print(rows[:3])
+for row in rows[:3]:
+    print(row)
 ```
 
-Run the root example:
+By default, CSV responses are parsed into `list[dict[str, str]]`. Column names come from your aliases when you provide them, such as `temp_k` above.
 
-```bash
-python example.py
+## Exact Selectors
+
+GribStream selectors are exact dataset-defined tuples. Do not guess parameter levels or casing. Use the catalog helpers when you need to discover them:
+
+```python
+from gribstream import GribStreamClient
+
+with GribStreamClient() as client:
+    parameter = client.get_dataset_parameter("ifsoper", "2t")
+    for variation in parameter["variations"]:
+        print(variation["selector"])
 ```
 
-The Skew-T example writes `skewtlogp.png` by default so it works in headless
-shell sessions:
+You can copy a returned selector directly into a query:
 
-```bash
-python skewtlogp.py --output out/skewt-houston.png
-python skewtlogp.py --help
+```python
+selector = parameter["variations"][0]["selector"]
+selector["alias"] = "temp_k"
+
+rows = client.timeseries(
+    dataset="ifsoper",
+    from_time="2026-04-04T00:00:00Z",
+    until_time="2026-04-04T12:00:00Z",
+    coordinates=[client.coordinate(51.5072, -0.1276, "London")],
+    variables=[selector],
+)
 ```
 
-## API Surface
+## Runs vs Timeseries
 
-- `client.timeseries(...)`: calls `POST /api/v2/{dataset}/timeseries` for the best available value per valid time. Use this for dashboards, feature generation, and leakage-safe backtests.
-- `client.runs(...)`: calls `POST /api/v2/{dataset}/runs` for every matching model run. Use this for forecast aging, run-to-run drift, and cycle comparisons.
-- `client.query(dataset, endpoint, payload, ...)`: sends a fully formed payload to `timeseries` or `runs`.
-- Catalog helpers: `list_datasets`, `get_dataset`, `list_dataset_parameters`, `get_dataset_parameter`, `list_shared_parameters`, `get_shared_parameter`, and `resolve_shared_parameter`.
+Use `timeseries` when you want the freshest available run for each valid time:
 
-## Request Features
+```python
+rows = client.timeseries(
+    dataset="gfs",
+    from_time="2026-04-04T00:00:00Z",
+    until_time="2026-04-04T06:00:00Z",
+    coordinates=[client.coordinate(29.7604, -95.3698, "Houston")],
+    variables=[client.variable("TMP", "2 m above ground", alias="temp_k")],
+)
+```
 
-Forecast query helpers support the current v2 request fields:
+Use `runs` when you want every model run in a run-time window:
 
-- Time selection: `from_time`/`until_time`, `forecasted_from`/`forecasted_until`, or exact `times_list`.
-- Backtesting: `as_of` on `timeseries` excludes runs newer than the cutoff.
-- Lead-time filters: `min_lead_time`/`max_lead_time` are preferred; deprecated `min_horizon`/`max_horizon` remain available.
-- Spatial selection: point `coordinates`, rectangular `grid`, or both.
-- Data fields: exact selector `variables`, server-side `expressions`, boolean `filter`, and ensemble `members`.
-- Response formats: CSV rows as `list[dict[str, str]]` by default, `application/json` as Python objects, and `application/ndjson` as rows or a streaming iterator.
+```python
+rows = client.runs(
+    dataset="gfs",
+    forecasted_from="2026-04-04T00:00:00Z",
+    forecasted_until="2026-04-04T06:00:00Z",
+    coordinates=[client.coordinate(29.7604, -95.3698, "Houston")],
+    variables=[client.variable("TMP", "2 m above ground", alias="temp_k")],
+    min_lead_time="0h",
+    max_lead_time="18h",
+)
+```
+
+## Shared Parameters
+
+Most single-model queries should use exact selectors. Shared parameters are useful when you are writing multi-model code and want one logical signal, such as `wind_speed_10m`, mapped to each dataset's native selectors.
+
+```python
+with GribStreamClient() as client:
+    wind_request = client.resolve_shared_parameter(
+        "wind_speed_10m",
+        dataset="ifsoper",
+        alias="wind_mps",
+    )
+
+    rows = client.timeseries(
+        dataset="ifsoper",
+        from_time="2026-04-04T00:00:00Z",
+        until_time="2026-04-04T12:00:00Z",
+        coordinates=[client.coordinate(51.5072, -0.1276, "London")],
+        variables=wind_request["variables"],
+        expressions=wind_request.get("expressions"),
+    )
+```
+
+`resolve_shared_parameter` returns a request fragment containing `variables` and, when needed, `expressions`.
+
+## Response Formats
+
+Default CSV parsing:
+
+```python
+rows = client.timeseries(...)
+```
+
+JSON response:
+
+```python
+from gribstream import JSON
+
+rows = client.timeseries(..., accept=JSON)
+```
+
+Streaming NDJSON response:
+
+```python
+from gribstream import NDJSON
+
+for row in client.timeseries(..., accept=NDJSON, stream=True):
+    print(row)
+```
 
 ## Examples
 
-After `pip install -e .`, examples can be run directly as scripts. All data-query examples read the token from `GRIBSTREAM_API_KEY`.
+The repository includes runnable examples. After installing from a source checkout with `pip install -e .`, run them directly:
 
 ```bash
 python examples/timeseries_rows.py
@@ -108,95 +201,15 @@ python skewtlogp.py
 
 `examples/catalog_discovery.py` and `examples/payload_builder.py` do not send authenticated data queries. The rest require `GRIBSTREAM_API_KEY`.
 
-Example coverage:
-
-- `timeseries_rows.py`: best-available valid-time query into CSV row dictionaries.
-- `runs_forecast_aging.py`: every matching model run for forecast-aging analysis.
-- `as_of_backtest.py`: leakage-safe historical query with an `as_of` cutoff.
-- `json_response.py`: `application/json` instead of CSV rows.
-- `ndjson_stream.py`: streaming newline-delimited JSON rows.
-- `ensemble_members.py`: explicit member selection for ensemble datasets.
-- `shared_parameter_timeseries.py`: resolve a normalized signal for one dataset.
-- `multimodel_shared_compare.py`: compare one shared signal across datasets.
-- `grid_filter.py`: grid query with server-side expressions and filters.
-- `selector_lookup_to_query.py`: discover an exact selector and query with it.
-- `payload_builder.py`: build a request body and curl command without sending it.
-- `catalog_discovery.py`: public dataset and parameter catalog discovery.
-
-## Shared Parameters
-
-Most queries can use exact selectors directly:
-
-```python
-rows = client.timeseries(
-    dataset="gfs",
-    from_time="2026-04-04T00:00:00Z",
-    until_time="2026-04-04T12:00:00Z",
-    coordinates=[client.coordinate(29.7604, -95.3698, "Houston")],
-    variables=[client.variable("TMP", "2 m above ground", alias="temp_k")],
-)
-```
-
-Shared parameters are for multi-model code. They let you ask for a logical signal such as
-`wind_speed_10m` and let GribStream resolve the exact dataset-specific request fragment.
-For some datasets this is a direct selector; for others it may be hidden U/V wind fields plus
-an expression.
-
-```python
-from gribstream import GribStreamClient
-
-with GribStreamClient() as client:
-    wind_request = client.resolve_shared_parameter(
-        "wind_speed_10m",
-        dataset="ifsoper",
-        alias="wind_mps",
-    )
-
-    # wind_request looks like:
-    # {
-    #   "variables": [... exact selectors for ifsoper ...],
-    #   "expressions": [... optional derived wind speed expression ...],
-    # }
-
-    rows = client.timeseries(
-        dataset="ifsoper",
-        from_time="2026-04-04T00:00:00Z",
-        until_time="2026-04-04T12:00:00Z",
-        coordinates=[client.coordinate(51.5072, -0.1276, "London")],
-        variables=wind_request["variables"],
-        expressions=wind_request.get("expressions"),
-    )
-```
-
-If you are only targeting one known dataset and already know its selector, prefer the direct
-selector form.
-
-## Publishing To PyPI
-
-The repo is now package-shaped via `pyproject.toml`. Recommended release flow:
+The Skew-T example writes `skewtlogp.png` by default, so it works in terminal and headless environments:
 
 ```bash
-python -m pip install -e '.[build]'
-python -m build
-python -m twine check dist/*
-python -m twine upload --repository testpypi dist/*
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple gribstream
-python -m twine upload dist/*
+python skewtlogp.py --output out/skewt-houston.png
 ```
 
-Operational notes:
+## Links
 
-- The package distribution name and import name are both `gribstream`.
-- Use a PyPI API token, not your password. Store it in `~/.pypirc` or `TWINE_USERNAME=__token__` plus `TWINE_PASSWORD`.
-- Bump `version` in `pyproject.toml` for every upload. PyPI does not allow replacing an existing file for the same version.
-- TestPyPI is a rehearsal only; dependencies may still resolve from real PyPI via `--extra-index-url`.
-- Before the first real upload, confirm the `gribstream` project name is available on PyPI.
-
-## Sources
-
-This client was updated against GribStream's official public docs and OpenAPI contract:
-
+- GribStream: https://gribstream.com
 - API docs: https://gribstream.com/docs
 - Quickstart: https://gribstream.com/quickstart
 - OpenAPI spec: https://gribstream.com/docs/openapi.yaml
-- Catalog release notes: https://gribstream.com/blog/public-catalog-endpoints-now-available
